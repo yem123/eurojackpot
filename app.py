@@ -13,7 +13,8 @@ st.title("🎯 Eurojackpot Production Predictor")
 st.markdown("Easily update the latest draw results and generate your next prediction ticket.")
 
 # Define paths & frozen features
-project_root = Path("/content/eurojackpot_project/eurojackpot_project")
+# Automatically finds the directory where app.py is currently running
+project_root = Path(__file__).parent
 main_path = project_root / "data" / "processed" / "main_features_rich.csv"
 euro_path = project_root / "data" / "processed" / "euro_features_rich.csv"
 
