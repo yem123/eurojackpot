@@ -1,0 +1,92 @@
+{
+  "Logistic Regression": {
+    "log_loss": 0.3326059557525008,
+    "brier": 0.0901758014088723,
+    "draws": 100,
+    "avg_hits": 0.42,
+    "zero": 64,
+    "one_plus": 36,
+    "two_plus": 6,
+    "max_hits": 2
+  },
+  "Random Forest": {
+    "log_loss": 0.4472352415792398,
+    "brier": 0.09332312845261682,
+    "draws": 100,
+    "avg_hits": 0.43,
+    "zero": 60,
+    "one_plus": 40,
+    "two_plus": 3,
+    "max_hits": 2
+  },
+  "Gradient Boosting": {
+    "log_loss": 2.021912139231501,
+    "brier": 0.16354739098643728,
+    "draws": 100,
+    "avg_hits": 0.46,
+    "zero": 60,
+    "one_plus": 40,
+    "two_plus": 6,
+    "max_hits": 2
+  },
+  "XGBoost": {
+    "log_loss": 0.37765849392549405,
+    "brier": 0.09519730508327484,
+    "draws": 100,
+    "avg_hits": 0.43,
+    "zero": 62,
+    "one_plus": 38,
+    "two_plus": 5,
+    "max_hits": 2
+  },
+  "LightGBM": {
+    "log_loss": 0.4550406112057105,
+    "brier": 0.09736767572530744,
+    "draws": 100,
+    "avg_hits": 0.44,
+    "zero": 61,
+    "one_plus": 39,
+    "two_plus": 5,
+    "max_hits": 2
+  },
+  "Averaging Ensemble": {
+    "log_loss": 1.6378724560890328,
+    "brier": 0.1519399347789375,
+    "draws": 100,
+    "avg_hits": 0.37,
+    "zero": 67,
+    "one_plus": 33,
+    "two_plus": 4,
+    "max_hits": 2
+  },
+  "Historical Frequency": {
+    "log_loss": 0.32686954773019017,
+    "brier": 0.09030838278528444,
+    "draws": 100,
+    "avg_hits": 0.55,
+    "zero": 58,
+    "one_plus": 42,
+    "two_plus": 12,
+    "max_hits": 3
+  },
+  "Recent-N Frequency": {
+    "log_loss": 0.5312900453809501,
+    "brier": 0.1263209656544416,
+    "draws": 100,
+    "avg_hits": 0.42,
+    "zero": 62,
+    "one_plus": 38,
+    "two_plus": 4,
+    "max_hits": 2
+  },
+  "Random Expectation": {
+    "log_loss": 0.3250829733914482,
+    "brier": 0.09,
+    "draws": 100,
+    "avg_hits": 0.5,
+    "zero": null,
+    "one_plus": null,
+    "two_plus": null,
+    "max_hits": null
+  }
+}

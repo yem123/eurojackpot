@@ -1,0 +1,62 @@
+{
+  "Logistic Regression": {
+    "log_loss": 0.32513626561640313,
+    "brier": 0.09000878451486076,
+    "draws": 100,
+    "avg_hits": 0.59,
+    "zero": 52,
+    "one_plus": 48,
+    "two_plus": 9,
+    "max_hits": 3
+  },
+  "Random Forest": {
+    "log_loss": 0.32491081025118274,
+    "brier": 0.08996784001773064,
+    "draws": 100,
+    "avg_hits": 0.57,
+    "zero": 52,
+    "one_plus": 48,
+    "two_plus": 8,
+    "max_hits": 3
+  },
+  "Gradient Boosting": {
+    "log_loss": 0.3257606509456624,
+    "brier": 0.09011853959601,
+    "draws": 100,
+    "avg_hits": 0.66,
+    "zero": 48,
+    "one_plus": 52,
+    "two_plus": 10,
+    "max_hits": 4
+  },
+  "Historical Frequency": {
+    "log_loss": 0.3259696054212304,
+    "brier": 0.09014758864410052,
+    "draws": 100,
+    "avg_hits": 0.54,
+    "zero": 51,
+    "one_plus": 49,
+    "two_plus": 5,
+    "max_hits": 2
+  },
+  "Recent-N Frequency": {
+    "log_loss": 0.5486410196849394,
+    "brier": 0.1278567657235798,
+    "draws": 100,
+    "avg_hits": 0.46,
+    "zero": 60,
+    "one_plus": 40,
+    "two_plus": 6,
+    "max_hits": 2
+  },
+  "Random Expectation": {
+    "log_loss": 0.3250829733914482,
+    "brier": 0.09,
+    "draws": 100,
+    "avg_hits": 0.5,
+    "zero": null,
+    "one_plus": null,
+    "two_plus": null,
+    "max_hits": null
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "main": {
+    "frozen": true,
+    "feature_spec_version": "1.0-step7-frozen",
+    "pool": "main",
+    "selected_model": "Logistic Regression",
+    "selection_criterion": "lowest validation log loss (validation window = 100 draws, immediately preceding the untouched holdout); tie-break on permutation p-value, not used here",
+    "hyperparameters": {
+      "max_iter": 1000
+    },
+    "validation_metrics": {
+      "log_loss": 0.3256451356311911,
+      "brier": 0.09010045724529321,
+      "draws": 100,
+      "avg_hits": 0.45,
+      "zero": 63,
+      "one_plus": 37,
+      "two_plus": 7,
+      "max_hits": 3
+    },
+    "selection_notes": "Selected by lowest validation log loss (0.32565). Runner-up: Random Forest (log loss 0.32568, gap 0.00004). Validation permutation p-value: 0.7902."
+  },
+  "euro": {
+    "frozen": true,
+    "feature_spec_version": "1.0-step7-frozen",
+    "pool": "euro",
+    "selected_model": "Random Forest",
+    "selection_criterion": "lowest validation log loss (validation window = 100 draws, immediately preceding the untouched holdout); tie-break on permutation p-value, not used here",
+    "hyperparameters": {
+      "n_estimators": 300,
+      "max_depth": 4,
+      "min_samples_leaf": 50
+    },
+    "validation_metrics": {
+      "log_loss": 0.4518804527236555,
+      "brier": 0.1392563261035995,
+      "draws": 100,
+      "avg_hits": 0.29,
+      "zero": 71,
+      "one_plus": 29,
+      "two_plus": 0,
+      "max_hits": 1
+    },
+    "selection_notes": "Selected by lowest validation log loss (0.45188). Runner-up: Logistic Regression (log loss 0.45291, gap 0.00103). Validation permutation p-value: 0.8392."
+  }
+}

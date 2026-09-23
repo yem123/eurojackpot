@@ -1,0 +1,20 @@
+{
+  "Logistic Regression": {
+    "step6_avg_hits": 0.55,
+    "step7_avg_hits": 0.59,
+    "step6_log_loss": 0.3250803034870322,
+    "step7_log_loss": 0.32513626561640313
+  },
+  "Random Forest": {
+    "step6_avg_hits": 0.5,
+    "step7_avg_hits": 0.57,
+    "step6_log_loss": 0.3254437818049583,
+    "step7_log_loss": 0.32491081025118274
+  },
+  "Gradient Boosting": {
+    "step6_avg_hits": 0.5,
+    "step7_avg_hits": 0.66,
+    "step6_log_loss": 0.32548402601797416,
+    "step7_log_loss": 0.3257606509456624
+  }
+}

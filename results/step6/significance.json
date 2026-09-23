@@ -1,0 +1,56 @@
+{
+  "main": {
+    "Logistic Regression": {
+      "avg_hits": 0.55,
+      "perm_p_value": 0.17382617382617382,
+      "n_perm": 1000
+    },
+    "Random Forest": {
+      "avg_hits": 0.5,
+      "perm_p_value": 0.41058941058941056,
+      "n_perm": 1000
+    },
+    "Gradient Boosting": {
+      "avg_hits": 0.5,
+      "perm_p_value": 0.4245754245754246,
+      "n_perm": 1000
+    },
+    "Historical Frequency": {
+      "avg_hits": 0.54,
+      "perm_p_value": 0.26873126873126874,
+      "n_perm": 1000
+    },
+    "Recent-N Frequency": {
+      "avg_hits": 0.46,
+      "perm_p_value": 0.7402597402597403,
+      "n_perm": 1000
+    }
+  },
+  "euro": {
+    "Logistic Regression": {
+      "avg_hits": 0.41,
+      "perm_p_value": 0.09490509490509491,
+      "n_perm": 1000
+    },
+    "Random Forest": {
+      "avg_hits": 0.27,
+      "perm_p_value": 0.957042957042957,
+      "n_perm": 1000
+    },
+    "Gradient Boosting": {
+      "avg_hits": 0.3,
+      "perm_p_value": 0.8621378621378621,
+      "n_perm": 1000
+    },
+    "Historical Frequency": {
+      "avg_hits": 0.21,
+      "perm_p_value": 1.0,
+      "n_perm": 1000
+    },
+    "Recent-N Frequency": {
+      "avg_hits": 0.41,
+      "perm_p_value": 0.09490509490509491,
+      "n_perm": 1000
+    }
+  }
+}

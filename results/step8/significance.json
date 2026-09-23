@@ -1,0 +1,66 @@
+{
+  "main": {
+    "Logistic Regression": {
+      "avg_hits": 0.45,
+      "perm_p_value": 0.7902097902097902,
+      "n_perm": 1000
+    },
+    "Random Forest": {
+      "avg_hits": 0.42,
+      "perm_p_value": 0.9000999000999002,
+      "n_perm": 1000
+    },
+    "Gradient Boosting": {
+      "avg_hits": 0.45,
+      "perm_p_value": 0.7872127872127872,
+      "n_perm": 1000
+    },
+    "XGBoost": {
+      "avg_hits": 0.4,
+      "perm_p_value": 0.9470529470529471,
+      "n_perm": 1000
+    },
+    "LightGBM": {
+      "avg_hits": 0.43,
+      "perm_p_value": 0.8861138861138861,
+      "n_perm": 1000
+    },
+    "Averaging Ensemble": {
+      "avg_hits": 0.43,
+      "perm_p_value": 0.8761238761238761,
+      "n_perm": 1000
+    }
+  },
+  "euro": {
+    "Logistic Regression": {
+      "avg_hits": 0.31,
+      "perm_p_value": 0.7152847152847153,
+      "n_perm": 1000
+    },
+    "Random Forest": {
+      "avg_hits": 0.29,
+      "perm_p_value": 0.8391608391608392,
+      "n_perm": 1000
+    },
+    "Gradient Boosting": {
+      "avg_hits": 0.38,
+      "perm_p_value": 0.2047952047952048,
+      "n_perm": 1000
+    },
+    "XGBoost": {
+      "avg_hits": 0.3,
+      "perm_p_value": 0.7692307692307693,
+      "n_perm": 1000
+    },
+    "LightGBM": {
+      "avg_hits": 0.29,
+      "perm_p_value": 0.8261738261738262,
+      "n_perm": 1000
+    },
+    "Averaging Ensemble": {
+      "avg_hits": 0.32,
+      "perm_p_value": 0.6313686313686314,
+      "n_perm": 1000
+    }
+  }
+}
