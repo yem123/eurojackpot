@@ -8,7 +8,7 @@ from sklearn.ensemble import RandomForestClassifier
 from pathlib import Path
 
 # --- ADMIN CONFIGURATION ---
-ADMIN_PASSWORD = "221820"  # Change this to your desired password
+ADMIN_PASSWORD = "your_secure_password_here"  # Change this to your desired password
 
 # Page config
 st.set_page_config(page_title="Eurojackpot Predictor", page_icon="🎯", layout="centered")
@@ -61,7 +61,7 @@ clean_df = st.session_state.clean_df
 main_df = st.session_state.main_df
 euro_df = st.session_state.euro_df
 
-# Create Tabs for Navigation including the new 12-Month Frequency tab
+# Create Tabs for Navigation including the 12-Month Frequency tab
 tab_inspect, tab_12m, tab_add = st.tabs([
     "📊 Inspect History & Predict", 
     "📈 Last 12 Months Frequency", 
@@ -180,7 +180,6 @@ with tab_12m:
     st.subheader("📈 Last 12 Months Frequency & Repeated Winning Draws")
     
     if "draw_date" in clean_df.columns and not clean_df["draw_date"].isna().all():
-        # Compute exact 12-month rolling window from the latest available draw date
         max_date = pd.to_datetime(clean_df["draw_date"]).max()
         start_date = max_date - relativedelta(years=1)
         
@@ -194,10 +193,8 @@ with tab_12m:
         if main_cols:
             all_mains = filtered_df[main_cols].values.flatten()
             m_series = pd.Series(all_mains).dropna().astype(int)
-            main_freq = m_series.value_counts().sort_index()
             
             st.markdown("### Clean Ranking by Frequency (Main Numbers 1-50)")
-            # Group by frequency count descending to mimic requested layout format
             freq_grouped_main = m_series.value_counts()
             frequency_dict_main = {}
             for num, count in freq_grouped_main.items():
@@ -226,20 +223,40 @@ with tab_12m:
                 st.markdown(f"**{count} times:** {nums_str}")
                 
         st.markdown("---")
-        st.markdown("### 🔄 Repeated Winning Draws / Exact Combinations in Last 12 Months")
-        # Check for identical winning sets within the window
-        filtered_df["main_tuple"] = filtered_df[main_cols].apply(lambda row: tuple(sorted([int(x) for x in row if pd.notna(x)])), axis=1)
-        draw_counts = filtered_df["main_tuple"].value_counts()
-        repeated_draws = draw_counts[draw_counts > 1]
+        st.markdown("### 🔄 Repeated Winning Draws & Combinations in Last 12 Months")
         
-        if not repeated_draws.empty:
-            st.warning(f"Found {len(repeated_draws)} exact matching winning main number combinations repeated in this 12-month period:")
-            for combo, freq in repeated_draws.items():
+        # 1. Main Numbers Repeated Combinations (5/50)
+        st.markdown("#### 🔵 1. Repeated Main Number Combinations (5/50)")
+        filtered_df["main_tuple"] = filtered_df[main_cols].apply(lambda row: tuple(sorted([int(x) for x in row if pd.notna(x)])), axis=1)
+        main_draw_counts = filtered_df["main_tuple"].value_counts()
+        repeated_mains = main_draw_counts[main_draw_counts > 1]
+        
+        if not repeated_mains.empty:
+            st.warning(f"Found {len(repeated_mains)} identical main number combination(s) repeated:")
+            for combo, freq in repeated_mains.items():
                 matching_rows = filtered_df[filtered_df["main_tuple"] == combo]
                 dates_str = ", ".join(matching_rows["draw_date"].astype(str).tolist())
-                st.markdown(f"* **Numbers {list(combo)}** appeared **{freq} times** on dates: {dates_str}")
+                st.markdown(f"* **Main Numbers {list(combo)}** appeared **{freq} times** on dates: {dates_str}")
         else:
-            st.success("✨ No identical winning main number combinations were repeated during this 12-month window.")
+            st.success("✨ No identical main number combinations were repeated in this window.")
+
+        st.markdown("")
+
+        # 2. Euro Numbers Repeated Combinations (2/12)
+        st.markdown("#### 🟡 2. Repeated Euro Number Combinations (2/12)")
+        filtered_df["euro_tuple"] = filtered_df[euro_cols].apply(lambda row: tuple(sorted([int(x) for x in row if pd.notna(x)])), axis=1)
+        euro_draw_counts = filtered_df["euro_tuple"].value_counts()
+        repeated_euros = euro_draw_counts[euro_draw_counts > 1]
+        
+        if not repeated_euros.empty:
+            st.warning(f"Found {len(repeated_euros)} identical euro number combination(s) repeated:")
+            for combo, freq in repeated_euros.items():
+                matching_rows = filtered_df[filtered_df["euro_tuple"] == combo]
+                dates_str = ", ".join(matching_rows["draw_date"].astype(str).tolist())
+                st.markdown(f"* **Euro Numbers {list(combo)}** appeared **{freq} times** on dates: {dates_str}")
+        else:
+            st.success("✨ No identical euro number combinations were repeated in this window.")
+
     else:
         st.error("❌ Unable to calculate 12-month frequencies due to missing 'draw_date' column.")
 
