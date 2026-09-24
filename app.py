@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from datetime import date
+from dateutil.relativedelta import relativedelta
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from pathlib import Path
@@ -13,7 +14,7 @@ ADMIN_PASSWORD = "221820"  # Change this to your desired password
 st.set_page_config(page_title="Eurojackpot Predictor", page_icon="🎯", layout="centered")
 
 st.title("🎯 Eurojackpot Production Predictor")
-st.markdown("Inspect historical draw records, generate predictions, or securely manage draw databases.")
+st.markdown("Inspect historical draws, track 12-month frequencies, generate predictions, or manage records.")
 
 # Safe path handling for both Colab notebooks and Streamlit Cloud
 try:
@@ -60,8 +61,12 @@ clean_df = st.session_state.clean_df
 main_df = st.session_state.main_df
 euro_df = st.session_state.euro_df
 
-# Create Tabs for Navigation
-tab_inspect, tab_add = st.tabs(["📊 Inspect History & Predict", "➕ Add New Draw"])
+# Create Tabs for Navigation including the new 12-Month Frequency tab
+tab_inspect, tab_12m, tab_add = st.tabs([
+    "📊 Inspect History & Predict", 
+    "📈 Last 12 Months Frequency", 
+    "➕ Add New Draw"
+])
 
 with tab_inspect:
     st.subheader("📅 Historical Draw Inspection & Management")
@@ -171,10 +176,77 @@ with tab_inspect:
             elif admin_pwd_input:
                 st.error("❌ Incorrect password.")
 
+with tab_12m:
+    st.subheader("📈 Last 12 Months Frequency & Repeated Winning Draws")
+    
+    if "draw_date" in clean_df.columns and not clean_df["draw_date"].isna().all():
+        # Compute exact 12-month rolling window from the latest available draw date
+        max_date = pd.to_datetime(clean_df["draw_date"]).max()
+        start_date = max_date - relativedelta(years=1)
+        
+        filtered_df = clean_df[(pd.to_datetime(clean_df["draw_date"]) >= start_date) & 
+                               (pd.to_datetime(clean_df["draw_date"]) <= max_date)].copy()
+        
+        st.info(f"📅 Analyzing rolling 12-month period: **{start_date.strftime('%B %d, %Y')}** to **{max_date.strftime('%B %d, %Y')}** ({len(filtered_df)} total draws)")
+        
+        # Calculate Main Frequencies
+        main_cols = [c for c in clean_df.columns if c.startswith("main_")]
+        if main_cols:
+            all_mains = filtered_df[main_cols].values.flatten()
+            m_series = pd.Series(all_mains).dropna().astype(int)
+            main_freq = m_series.value_counts().sort_index()
+            
+            st.markdown("### Clean Ranking by Frequency (Main Numbers 1-50)")
+            # Group by frequency count descending to mimic requested layout format
+            freq_grouped_main = m_series.value_counts()
+            frequency_dict_main = {}
+            for num, count in freq_grouped_main.items():
+                frequency_dict_main.setdefault(count, []).append(num)
+                
+            for count in sorted(frequency_dict_main.keys(), reverse=True):
+                nums_str = ", ".join(map(str, sorted(frequency_dict_main[count])))
+                st.markdown(f"**{count} times:** {nums_str}")
+        
+        st.markdown("---")
+        
+        # Calculate Euro Frequencies
+        euro_cols = [c for c in clean_df.columns if c.startswith("euro_")]
+        if euro_cols:
+            all_euros = filtered_df[euro_cols].values.flatten()
+            e_series = pd.Series(all_euros).dropna().astype(int)
+            
+            st.markdown("### Clean Ranking — Euro Numbers (1-12)")
+            freq_grouped_euro = e_series.value_counts()
+            frequency_dict_euro = {}
+            for num, count in freq_grouped_euro.items():
+                frequency_dict_euro.setdefault(count, []).append(num)
+                
+            for count in sorted(frequency_dict_euro.keys(), reverse=True):
+                nums_str = ", ".join(map(str, sorted(frequency_dict_euro[count])))
+                st.markdown(f"**{count} times:** {nums_str}")
+                
+        st.markdown("---")
+        st.markdown("### 🔄 Repeated Winning Draws / Exact Combinations in Last 12 Months")
+        # Check for identical winning sets within the window
+        filtered_df["main_tuple"] = filtered_df[main_cols].apply(lambda row: tuple(sorted([int(x) for x in row if pd.notna(x)])), axis=1)
+        draw_counts = filtered_df["main_tuple"].value_counts()
+        repeated_draws = draw_counts[draw_counts > 1]
+        
+        if not repeated_draws.empty:
+            st.warning(f"Found {len(repeated_draws)} exact matching winning main number combinations repeated in this 12-month period:")
+            for combo, freq in repeated_draws.items():
+                matching_rows = filtered_df[filtered_df["main_tuple"] == combo]
+                dates_str = ", ".join(matching_rows["draw_date"].astype(str).tolist())
+                st.markdown(f"* **Numbers {list(combo)}** appeared **{freq} times** on dates: {dates_str}")
+        else:
+            st.success("✨ No identical winning main number combinations were repeated during this 12-month window.")
+    else:
+        st.error("❌ Unable to calculate 12-month frequencies due to missing 'draw_date' column.")
+
 with tab_add:
     st.subheader("➕ Register a New Future Draw")
     
-    # Determine latest reference date
+    valid_dates = sorted(clean_df["draw_date"].dropna().unique()) if "draw_date" in clean_df.columns else []
     latest_existing_date = max(valid_dates) if valid_dates else date.today()
     st.info(f"📌 Latest recorded draw in database is on **{latest_existing_date.strftime('%B %d, %Y')}**. New draw dates must be after this date.")
     
@@ -203,14 +275,12 @@ with tab_add:
                 else:
                     new_idx = int(st.session_state.clean_df["draw_idx"].max()) + 1 if "draw_idx" in st.session_state.clean_df.columns else len(st.session_state.clean_df) + 1
                     
-                    # Construct new row dict matching clean_draws format
                     new_row = {"draw_idx": new_idx, "draw_date": new_draw_date}
                     for i, val in enumerate(m_list, start=1):
                         new_row[f"main_{i}"] = val
                     for i, val in enumerate(e_list, start=1):
                         new_row[f"euro_{i}"] = val
                         
-                    # Append to session state clean_df
                     st.session_state.clean_df = pd.concat([st.session_state.clean_df, pd.DataFrame([new_row])], ignore_index=True)
                     st.success(f"✓ Successfully registered future draw for **{new_draw_date.strftime('%B %d, %Y')}**!")
                     st.balloons()
