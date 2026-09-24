@@ -8,13 +8,13 @@ from sklearn.ensemble import RandomForestClassifier
 from pathlib import Path
 
 # --- ADMIN CONFIGURATION ---
-ADMIN_PASSWORD = "your_secure_password_here"  # Change this to your desired password
+ADMIN_PASSWORD = "221820"  # Change this to your desired password
 
 # Page config
 st.set_page_config(page_title="Eurojackpot Predictor", page_icon="🎯", layout="centered")
 
 st.title("🎯 Eurojackpot Production Predictor")
-st.markdown("Inspect historical draws, track 12-month frequencies, generate predictions, or manage records.")
+st.markdown("Inspect historical draws, track 12-month frequencies, search combinations, generate predictions, or manage records.")
 
 # Safe path handling for both Colab notebooks and Streamlit Cloud
 try:
@@ -61,10 +61,10 @@ clean_df = st.session_state.clean_df
 main_df = st.session_state.main_df
 euro_df = st.session_state.euro_df
 
-# Create Tabs for Navigation including the 12-Month Frequency tab
+# Create Tabs for Navigation
 tab_inspect, tab_12m, tab_add = st.tabs([
     "📊 Inspect History & Predict", 
-    "📈 Last 12 Months Frequency", 
+    "📈 Frequency & Combination Search", 
     "➕ Add New Draw"
 ])
 
@@ -257,8 +257,47 @@ with tab_12m:
         else:
             st.success("✨ No identical euro number combinations were repeated in this window.")
 
+        # --- 5 SQUARE INPUT FIELDS FOR ENTIRE DATASET SEARCH ---
+        st.markdown("---")
+        st.markdown("### 🔎 Search Custom Main Combination (Entire Dataset)")
+        st.markdown("Enter 5 main numbers below to search if this exact combination has ever occurred in history:")
+
+        col_s1, col_s2, col_s3, col_s4, col_s5 = st.columns(5)
+        with col_s1:
+            s_n1 = st.number_input("N1", min_value=1, max_value=50, value=1, step=1, key="search_n1")
+        with col_s2:
+            s_n2 = st.number_input("N2", min_value=1, max_value=50, value=2, step=1, key="search_n2")
+        with col_s3:
+            s_n3 = st.number_input("N3", min_value=1, max_value=50, value=3, step=1, key="search_n3")
+        with col_s4:
+            s_n4 = st.number_input("N4", min_value=1, max_value=50, value=4, step=1, key="search_n4")
+        with col_s5:
+            s_n5 = st.number_input("N5", min_value=1, max_value=50, value=5, step=1, key="search_n5")
+
+        if st.button("Search Entire Dataset"):
+            searched_tuple = tuple(sorted([int(s_n1), int(s_n2), int(s_n3), int(s_n4), int(s_n5)]))
+            
+            if len(set(searched_tuple)) != 5:
+                st.warning("⚠️ Please provide 5 distinct main numbers.")
+            else:
+                # Search across full clean_df
+                full_clean_copy = clean_df.copy()
+                full_clean_copy["search_tuple"] = full_clean_copy[main_cols].apply(
+                    lambda row: tuple(sorted([int(x) for x in row if pd.notna(x)])), axis=1
+                )
+                search_matches = full_clean_copy[full_clean_copy["search_tuple"] == searched_tuple]
+                
+                if not search_matches.empty:
+                    st.success(f"🎉 Found matching draw(s) across the entire dataset!")
+                    for _, match_row in search_matches.iterrows():
+                        d_date = match_row.get("draw_date", "Unknown Date")
+                        d_idx = match_row.get("draw_idx", "N/A")
+                        st.markdown(f"- **Draw Date:** `{d_date}` (Index #{d_idx})")
+                else:
+                    st.info("No numbers found matching this combination in the entire dataset.")
+
     else:
-        st.error("❌ Unable to calculate 12-month frequencies due to missing 'draw_date' column.")
+        st.error("❌ Unable to calculate frequencies due to missing 'draw_date' column.")
 
 with tab_add:
     st.subheader("➕ Register a New Future Draw")
