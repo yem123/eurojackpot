@@ -6,11 +6,14 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from pathlib import Path
 
+# --- ADMIN CONFIGURATION ---
+ADMIN_PASSWORD = "221820"  # Change this to your desired password
+
 # Page config
 st.set_page_config(page_title="Eurojackpot Predictor", page_icon="🎯", layout="centered")
 
 st.title("🎯 Eurojackpot Production Predictor")
-st.markdown("Inspect historical draw records with exact dates or generate your next prediction ticket.")
+st.markdown("Inspect historical draw records, generate predictions, or securely manage draw databases.")
 
 # Safe path handling for both Colab notebooks and Streamlit Cloud
 try:
@@ -46,13 +49,22 @@ def load_data():
         
     return clean_df, main_df, euro_df
 
-clean_df, main_df, euro_df = load_data()
+# Initialize session state for persistence during runtime
+if "clean_df" not in st.session_state or "main_df" not in st.session_state or "euro_df" not in st.session_state:
+    c_df, m_df, e_df = load_data()
+    st.session_state.clean_df = c_df
+    st.session_state.main_df = m_df
+    st.session_state.euro_df = e_df
 
-# Create Tabs for Clean Separation
+clean_df = st.session_state.clean_df
+main_df = st.session_state.main_df
+euro_df = st.session_state.euro_df
+
+# Create Tabs for Navigation
 tab_inspect, tab_add = st.tabs(["📊 Inspect History & Predict", "➕ Add New Draw"])
 
 with tab_inspect:
-    st.subheader("📅 Historical Draw Inspection")
+    st.subheader("📅 Historical Draw Inspection & Management")
     
     if "draw_date" in clean_df.columns:
         valid_dates = sorted(clean_df["draw_date"].dropna().unique())
@@ -68,16 +80,12 @@ with tab_inspect:
             index=len(valid_dates) - 1
         )
 
-        # Get exact row for this date from clean_draws
         row_data = clean_df[clean_df["draw_date"] == selected_date].iloc[0]
         
-        # Extract numbers safely (assuming columns like main_1...main_5 and euro_1...euro_2 or similar)
-        # Adjust column names here if your clean_draws.csv column names differ
         try:
             actual_main = [int(row_data[f"main_{i}"]) for i in range(1, 6) if f"main_{i}" in row_data]
             actual_euro = [int(row_data[f"euro_{i}"]) for i in range(1, 3) if f"euro_{i}" in row_data]
         except Exception:
-            # Fallback if stored as comma-separated string
             actual_main = [int(x.strip()) for x in str(row_data.get("main_numbers", "")).split(",")] if "main_numbers" in row_data else []
             actual_euro = [int(x.strip()) for x in str(row_data.get("euro_numbers", "")).split(",")] if "euro_numbers" in row_data else []
 
@@ -85,10 +93,11 @@ with tab_inspect:
         st.markdown(f"### 🏆 Official Results for {selected_date.strftime('%B %d, %Y')}")
         col_r1, col_r2 = st.columns(2)
         with col_r1:
-            st.metric(label="Actual Main Numbers (5/50)", value=", ".join(map(str, actual_main)) if actual_main else "Check column mapping")
+            st.metric(label="Actual Main Numbers (5/50)", value=", ".join(map(str, actual_main)) if actual_main else "N/A")
         with col_r2:
-            st.metric(label="Actual Euro Numbers (2/12)", value=", ".join(map(str, actual_euro)) if actual_euro else "Check column mapping")
+            st.metric(label="Actual Euro Numbers (2/12)", value=", ".join(map(str, actual_euro)) if actual_euro else "N/A")
 
+        # --- PREDICTION SECTION ---
         st.markdown("---")
         if st.button("Generate Prediction Ticket for Next Draw"):
             try:
@@ -122,17 +131,88 @@ with tab_inspect:
             except Exception as e:
                 st.error(f"Prediction error: {e}")
 
+        # --- ADMIN EDIT / DELETE SECTION ---
+        with st.expander("🔐 Admin Controls: Edit or Delete Selected Draw"):
+            admin_pwd_input = st.text_input("Enter Admin Password", type="password", key="inspect_admin_pwd")
+            
+            if admin_pwd_input == ADMIN_PASSWORD:
+                st.success("🔓 Admin Access Granted")
+                
+                col_edit, col_del = st.columns(2)
+                
+                with col_edit:
+                    st.markdown("#### Edit Draw Numbers")
+                    edit_main = st.text_input("New Main Numbers (5, comma-separated)", ", ".join(map(str, actual_main)), key="edit_main")
+                    edit_euro = st.text_input("New Euro Numbers (2, comma-separated)", ", ".join(map(str, actual_euro)), key="edit_euro")
+                    
+                    if st.button("Update Draw Record"):
+                        try:
+                            m_parsed = [int(x.strip()) for x in edit_main.split(",")]
+                            e_parsed = [int(x.strip()) for x in edit_euro.split(",")]
+                            if len(m_parsed) == 5 and len(e_parsed) == 2:
+                                idx_loc = st.session_state.clean_df[st.session_state.clean_df["draw_date"] == selected_date].index
+                                for i in range(1, 6):
+                                    st.session_state.clean_df.loc[idx_loc, f"main_{i}"] = m_parsed[i-1]
+                                for i in range(1, 3):
+                                    st.session_state.clean_df.loc[idx_loc, f"euro_{i}"] = e_parsed[i-1]
+                                st.success("✓ Draw record updated successfully in session memory!")
+                                st.rerun()
+                            else:
+                                st.error("Please provide exactly 5 main and 2 euro numbers.")
+                        except Exception as ex:
+                            st.error(f"Update failed: {ex}")
+                            
+                with col_del:
+                    st.markdown("#### Delete Draw Record")
+                    if st.button("🗑️ Delete This Draw", type="primary"):
+                        st.session_state.clean_df = st.session_state.clean_df[st.session_state.clean_df["draw_date"] != selected_date]
+                        st.success("✓ Draw deleted successfully from session memory!")
+                        st.rerun()
+            elif admin_pwd_input:
+                st.error("❌ Incorrect password.")
+
 with tab_add:
-    st.subheader("➕ Register a New Draw")
-    st.markdown("Use the calendar date picker below to input a new draw and its winning numbers:")
+    st.subheader("➕ Register a New Future Draw")
+    
+    # Determine latest reference date
+    latest_existing_date = max(valid_dates) if valid_dates else date.today()
+    st.info(f"📌 Latest recorded draw in database is on **{latest_existing_date.strftime('%B %d, %Y')}**. New draw dates must be after this date.")
     
     with st.form("add_draw_form"):
-        new_draw_date = st.date_input("New Draw Date", value=date.today())
+        new_draw_date = st.date_input("New Draw Date", value=latest_existing_date)
         new_main_input = st.text_input("Winning Main Numbers (5 numbers, comma-separated)", "5, 12, 23, 34, 45")
         new_euro_input = st.text_input("Winning Euro Numbers (2 numbers, comma-separated)", "3, 8")
+        
+        st.markdown("---")
+        add_admin_pwd = st.text_input("Admin Password Required to Save", type="password")
         
         submit_new_draw = st.form_submit_button("Save New Draw")
         
     if submit_new_draw:
-        st.success(f"✓ Draw for **{new_draw_date.strftime('%B %d, %Y')}** registered successfully in session memory!")
-        st.balloons()
+        if add_admin_pwd != ADMIN_PASSWORD:
+            st.error("❌ Incorrect admin password. Cannot save new draw.")
+        elif new_draw_date <= latest_existing_date:
+            st.error(f"❌ Invalid date! New draw date must be **after** the latest recorded date ({latest_existing_date.strftime('%B %d, %Y')}).")
+        else:
+            try:
+                m_list = [int(x.strip()) for x in new_main_input.split(",")]
+                e_list = [int(x.strip()) for x in new_euro_input.split(",")]
+                
+                if len(m_list) != 5 or len(e_list) != 2:
+                    st.error("❌ Please provide exactly 5 main numbers and 2 euro numbers.")
+                else:
+                    new_idx = int(st.session_state.clean_df["draw_idx"].max()) + 1 if "draw_idx" in st.session_state.clean_df.columns else len(st.session_state.clean_df) + 1
+                    
+                    # Construct new row dict matching clean_draws format
+                    new_row = {"draw_idx": new_idx, "draw_date": new_draw_date}
+                    for i, val in enumerate(m_list, start=1):
+                        new_row[f"main_{i}"] = val
+                    for i, val in enumerate(e_list, start=1):
+                        new_row[f"euro_{i}"] = val
+                        
+                    # Append to session state clean_df
+                    st.session_state.clean_df = pd.concat([st.session_state.clean_df, pd.DataFrame([new_row])], ignore_index=True)
+                    st.success(f"✓ Successfully registered future draw for **{new_draw_date.strftime('%B %d, %Y')}**!")
+                    st.balloons()
+            except Exception as e:
+                    st.error(f"Failed to add draw: {e}")
