@@ -291,7 +291,7 @@ with tab_12m:
                     st.success(f"🎉 Found matching draw(s) across the entire dataset!")
                     for _, match_row in search_matches.iterrows():
                         d_date = match_row.get("draw_date", "Unknown Date")
-                        d_idx = match_row.get("draw_idx", "N/A")
+                        d_idx = match_row.get("draw_idx", match_row.name)
                         st.markdown(f"- **Draw Date:** `{d_date}` (Index #{d_idx})")
                 else:
                     st.info("No numbers found matching this combination in the entire dataset.")
