@@ -8,7 +8,7 @@ from sklearn.ensemble import RandomForestClassifier
 from pathlib import Path
 
 # --- ADMIN CONFIGURATION ---
-ADMIN_PASSWORD = "221820"  # Change this to your desired password
+ADMIN_PASSWORD = "your_secure_password_here"  # Change this to your desired password
 
 # Page config
 st.set_page_config(page_title="Eurojackpot Predictor", page_icon="🎯", layout="centered")
@@ -113,7 +113,7 @@ with tab_inspect:
                         latest_main = main_df[main_df["draw_idx"] == selected_draw_idx].copy()
                         latest_euro = euro_df[euro_df["draw_idx"] == selected_draw_idx].copy()
                     else:
-                        # Dynamic feature generation for newly added draws
+                        # Dynamic feature generation for newly added draws lacking pre-computed rows
                         max_existing_idx = main_df["draw_idx"].max()
                         latest_main = main_df[main_df["draw_idx"] == max_existing_idx].copy()
                         latest_euro = euro_df[euro_df["draw_idx"] == max_existing_idx].copy()
@@ -124,14 +124,14 @@ with tab_inspect:
                         drawn_mains = [int(row_data[f"main_{i}"]) for i in range(1, 6) if f"main_{i}" in row_data]
                         drawn_euros = [int(row_data[f"euro_{i}"]) for i in range(1, 3) if f"euro_{i}" in row_data]
                         
-                        # 1. Update Gaps for both pools
+                        # Update Gaps
                         latest_main.loc[latest_main["number"].isin(drawn_mains), "gap_since_last"] = 0
                         latest_main.loc[~latest_main["number"].isin(drawn_mains), "gap_since_last"] += 1
                         
                         latest_euro.loc[latest_euro["number"].isin(drawn_euros), "gap_since_last"] = 0
                         latest_euro.loc[~latest_euro["number"].isin(drawn_euros), "gap_since_last"] += 1
 
-                        # 2. Update Frequencies dynamically for BOTH main and euro pools
+                        # Update Frequencies dynamically for both pools
                         for col in ["freq_short", "freq_medium", "freq_long", "freq_all"]:
                             if col in latest_main.columns:
                                 latest_main.loc[latest_main["number"].isin(drawn_mains), col] += 1
@@ -377,6 +377,7 @@ with tab_add:
                 else:
                     new_idx = int(st.session_state.clean_df["draw_idx"].max()) + 1 if "draw_idx" in st.session_state.clean_df.columns else len(st.session_state.clean_df) + 1
                     
+                    # 1. Update clean_draws.csv
                     new_row = {"draw_idx": new_idx, "draw_date": new_draw_date}
                     for i, val in enumerate(m_list, start=1):
                         new_row[f"main_{i}"] = val
@@ -386,12 +387,84 @@ with tab_add:
                     st.session_state.clean_df = pd.concat([st.session_state.clean_df, pd.DataFrame([new_row])], ignore_index=True)
                     st.session_state.clean_df.to_csv(clean_draws_path, index=False)
                     
+                    # 2. Automatically generate and append new feature rows for ML persistence
+                    max_existing_idx = main_df["draw_idx"].max()
+                    
+                    # --- MAIN FEATURES PERSISTENCE (1 to 50) ---
+                    last_main_rows = main_df[main_df["draw_idx"] == max_existing_idx].copy()
+                    new_main_rows = []
+                    for num in range(1, 51):
+                        prev_row = last_main_rows[last_main_rows["number"] == num]
+                        if not prev_row.empty:
+                            r = prev_row.iloc[0].to_dict()
+                        else:
+                            r = {
+                                "number": num, "freq_short": 0, "freq_medium": 0, "freq_long": 0, "freq_all": 0, 
+                                "freq_trend": 0, "gap_since_last": 0, "recency_weighted": 0, "pair_score": 0, 
+                                "triplet_score": 0, "adjacent_flag": 0, "is_odd": num % 2, "is_low": 1 if num <= 25 else 0,
+                                "ctx_avg_sum": sum(m_list), "ctx_avg_odd_count": sum(1 for x in m_list if x % 2 != 0), 
+                                "ctx_avg_low_count": sum(1 for x in m_list if x <= 25)
+                            }
+                        
+                        r["draw_idx"] = new_idx
+                        r["draw_date"] = new_draw_date
+                        
+                        if num in m_list:
+                            r["gap_since_last"] = 0
+                            r["target"] = 1
+                            for f_col in ["freq_short", "freq_medium", "freq_long", "freq_all"]:
+                                if f_col in r:
+                                    r[f_col] += 1
+                        else:
+                            r["gap_since_last"] += 1
+                            r["target"] = 0
+                            
+                        new_main_rows.append(r)
+                        
+                    updated_main_df = pd.concat([main_df, pd.DataFrame(new_main_rows)], ignore_index=True)
+                    updated_main_df.to_csv(main_path, index=False)
+                    
+                    # --- EURO FEATURES PERSISTENCE (1 to 12) ---
+                    last_euro_rows = euro_df[euro_df["draw_idx"] == max_existing_idx].copy()
+                    new_euro_rows = []
+                    for num in range(1, 13):
+                        prev_row = last_euro_rows[last_euro_rows["number"] == num]
+                        if not prev_row.empty:
+                            r = prev_row.iloc[0].to_dict()
+                        else:
+                            r = {
+                                "number": num, "freq_short": 0, "freq_medium": 0, "freq_long": 0, "freq_all": 0, 
+                                "freq_trend": 0, "gap_since_last": 0, "recency_weighted": 0, "pair_score": 0, 
+                                "adjacent_flag": 0, "is_odd": num % 2, "is_low": 1 if num <= 6 else 0
+                            }
+                        
+                        r["draw_idx"] = new_idx
+                        r["draw_date"] = new_draw_date
+                        
+                        if num in e_list:
+                            r["gap_since_last"] = 0
+                            r["target"] = 1
+                            for f_col in ["freq_short", "freq_medium", "freq_long", "freq_all"]:
+                                if f_col in r:
+                                    r[f_col] += 1
+                        else:
+                            r["gap_since_last"] += 1
+                            r["target"] = 0
+                            
+                        new_euro_rows.append(r)
+                        
+                    updated_euro_df = pd.concat([euro_df, pd.DataFrame(new_euro_rows)], ignore_index=True)
+                    updated_euro_df.to_csv(euro_path, index=False)
+                    
+                    # 3. Clear cache and reload all updated state files
                     st.cache_data.clear()
                     c_df, m_df, e_df = load_data()
                     st.session_state.clean_df = c_df
+                    st.session_state.main_df = m_df
+                    st.session_state.euro_df = e_df
                     
-                    st.success(f"✓ Successfully registered and saved future draw for **{new_draw_date.strftime('%B %d, %Y')}**!")
+                    st.success(f"✓ Successfully registered, featured, and saved future draw for **{new_draw_date.strftime('%B %d, %Y')}**!")
                     st.balloons()
                     st.rerun()
             except Exception as e:
-                    st.error(f"Failed to add draw: {e}")
+                st.error(f"Failed to add draw: {e}")
