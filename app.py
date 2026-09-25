@@ -343,7 +343,13 @@ with tab_add:
                     # Save permanently to disk CSV
                     st.session_state.clean_df.to_csv(clean_draws_path, index=False)
                     
+                    # CLEAR CACHE AND RELOAD TO FORCE LATEST DATA RECOGNITION
+                    st.cache_data.clear()
+                    c_df, m_df, e_df = load_data()
+                    st.session_state.clean_df = c_df
+                    
                     st.success(f"✓ Successfully registered and saved future draw for **{new_draw_date.strftime('%B %d, %Y')}**!")
                     st.balloons()
+                    st.rerun() # Forces the app to instantly refresh and show the new draw!
             except Exception as e:
                     st.error(f"Failed to add draw: {e}")
