@@ -8,7 +8,7 @@ from sklearn.ensemble import RandomForestClassifier
 from pathlib import Path
 
 # --- ADMIN CONFIGURATION ---
-ADMIN_PASSWORD = "your_secure_password_here"  # Change this to your desired password
+ADMIN_PASSWORD = "221820"  # Change this to your desired password
 
 # Page config
 st.set_page_config(page_title="Eurojackpot Predictor", page_icon="🎯", layout="centered")
