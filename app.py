@@ -113,7 +113,7 @@ with tab_inspect:
                         latest_main = main_df[main_df["draw_idx"] == selected_draw_idx].copy()
                         latest_euro = euro_df[euro_df["draw_idx"] == selected_draw_idx].copy()
                     else:
-                        # Dynamic feature generation for newly added draws lacking pre-computed rows
+                        # Dynamic feature generation for newly added draws
                         max_existing_idx = main_df["draw_idx"].max()
                         latest_main = main_df[main_df["draw_idx"] == max_existing_idx].copy()
                         latest_euro = euro_df[euro_df["draw_idx"] == max_existing_idx].copy()
@@ -124,11 +124,20 @@ with tab_inspect:
                         drawn_mains = [int(row_data[f"main_{i}"]) for i in range(1, 6) if f"main_{i}" in row_data]
                         drawn_euros = [int(row_data[f"euro_{i}"]) for i in range(1, 3) if f"euro_{i}" in row_data]
                         
+                        # 1. Update Gaps
                         latest_main.loc[latest_main["number"].isin(drawn_mains), "gap_since_last"] = 0
                         latest_main.loc[~latest_main["number"].isin(drawn_mains), "gap_since_last"] += 1
                         
                         latest_euro.loc[latest_euro["number"].isin(drawn_euros), "gap_since_last"] = 0
                         latest_euro.loc[~latest_euro["number"].isin(drawn_euros), "gap_since_last"] += 1
+
+                        # 2. Update Frequencies dynamically for numbers that just hit
+                        for col in ["freq_short", "freq_medium", "freq_long", "freq_all"]:
+                            if col in latest_main.columns:
+                                latest_main.loc[latest_main["number"].isin(drawn_mains), col] += 1
+                        for col in ["freq_short", "freq_medium", "freq_long", "freq_all"]:
+                            if col in latest_euro.columns:
+                                latest_euro.loc[latest_euro["number"].isin(drawn_euros), col] += 1
 
                     main_model = LogisticRegression(max_iter=2000)
                     main_model.fit(main_df[FROZEN_MAIN_FEATURES], main_df["target"])
