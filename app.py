@@ -151,7 +151,14 @@ with tab_inspect:
                     
                     euro_probs = euro_model.predict_proba(latest_euro[FROZEN_EURO_FEATURES])[:, 1]
                     latest_euro["predicted_probability"] = euro_probs
-                    top_euro = sorted(latest_euro.sort_values(by="predicted_probability", ascending=False).head(2)["number"].tolist())
+                    
+                    # Sort deterministically by probability first, then by gap_since_last for data-driven tie-breaking
+                    top_euro = sorted(
+                        latest_euro.sort_values(
+                            by=["predicted_probability", "gap_since_last"], 
+                            ascending=[False, False]
+                        ).head(2)["number"].tolist()
+                    )
                     
                 st.markdown(f"### 🎯 RECOMMENDED PREDICTION TICKET")
                 st.balloons()
