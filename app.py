@@ -108,11 +108,31 @@ with tab_inspect:
             try:
                 selected_draw_idx = int(row_data.get("draw_idx", main_df["draw_idx"].max()))
                 
-                with st.spinner("Training models..."):
+                with st.spinner("Calculating features and training models..."):
+                    if selected_draw_idx in main_df["draw_idx"].values:
+                        latest_main = main_df[main_df["draw_idx"] == selected_draw_idx].copy()
+                        latest_euro = euro_df[euro_df["draw_idx"] == selected_draw_idx].copy()
+                    else:
+                        # Dynamic feature generation for newly added draws lacking pre-computed rows
+                        max_existing_idx = main_df["draw_idx"].max()
+                        latest_main = main_df[main_df["draw_idx"] == max_existing_idx].copy()
+                        latest_euro = euro_df[euro_df["draw_idx"] == max_existing_idx].copy()
+                        
+                        latest_main["draw_idx"] = selected_draw_idx
+                        latest_euro["draw_idx"] = selected_draw_idx
+                        
+                        drawn_mains = [int(row_data[f"main_{i}"]) for i in range(1, 6) if f"main_{i}" in row_data]
+                        drawn_euros = [int(row_data[f"euro_{i}"]) for i in range(1, 3) if f"euro_{i}" in row_data]
+                        
+                        latest_main.loc[latest_main["number"].isin(drawn_mains), "gap_since_last"] = 0
+                        latest_main.loc[~latest_main["number"].isin(drawn_mains), "gap_since_last"] += 1
+                        
+                        latest_euro.loc[latest_euro["number"].isin(drawn_euros), "gap_since_last"] = 0
+                        latest_euro.loc[~latest_euro["number"].isin(drawn_euros), "gap_since_last"] += 1
+
                     main_model = LogisticRegression(max_iter=2000)
                     main_model.fit(main_df[FROZEN_MAIN_FEATURES], main_df["target"])
                     
-                    latest_main = main_df[main_df["draw_idx"] == selected_draw_idx].copy()
                     main_probs = main_model.predict_proba(latest_main[FROZEN_MAIN_FEATURES])[:, 1]
                     latest_main["predicted_probability"] = main_probs
                     top_main = sorted(latest_main.sort_values(by="predicted_probability", ascending=False).head(5)["number"].tolist())
@@ -120,7 +140,6 @@ with tab_inspect:
                     euro_model = RandomForestClassifier(n_estimators=300, max_depth=4, min_samples_leaf=50, random_state=42, n_jobs=-1)
                     euro_model.fit(euro_df[FROZEN_EURO_FEATURES], euro_df["target"])
                     
-                    latest_euro = euro_df[euro_df["draw_idx"] == selected_draw_idx].copy()
                     euro_probs = euro_model.predict_proba(latest_euro[FROZEN_EURO_FEATURES])[:, 1]
                     latest_euro["predicted_probability"] = euro_probs
                     top_euro = sorted(latest_euro.sort_values(by="predicted_probability", ascending=False).head(2)["number"].tolist())
@@ -160,7 +179,13 @@ with tab_inspect:
                                     st.session_state.clean_df.loc[idx_loc, f"main_{i}"] = m_parsed[i-1]
                                 for i in range(1, 3):
                                     st.session_state.clean_df.loc[idx_loc, f"euro_{i}"] = e_parsed[i-1]
-                                st.success("✓ Draw record updated successfully in session memory!")
+                                
+                                st.session_state.clean_df.to_csv(clean_draws_path, index=False)
+                                st.cache_data.clear()
+                                c_df, m_df, e_df = load_data()
+                                st.session_state.clean_df = c_df
+                                
+                                st.success("✓ Draw record updated and saved permanently to disk!")
                                 st.rerun()
                             else:
                                 st.error("Please provide exactly 5 main and 2 euro numbers.")
@@ -171,7 +196,13 @@ with tab_inspect:
                     st.markdown("#### Delete Draw Record")
                     if st.button("🗑️ Delete This Draw", type="primary"):
                         st.session_state.clean_df = st.session_state.clean_df[st.session_state.clean_df["draw_date"] != selected_date]
-                        st.success("✓ Draw deleted successfully from session memory!")
+                        
+                        st.session_state.clean_df.to_csv(clean_draws_path, index=False)
+                        st.cache_data.clear()
+                        c_df, m_df, e_df = load_data()
+                        st.session_state.clean_df = c_df
+                        
+                        st.success("✓ Draw deleted and changes saved permanently to disk!")
                         st.rerun()
             elif admin_pwd_input:
                 st.error("❌ Incorrect password.")
@@ -280,7 +311,6 @@ with tab_12m:
             if len(set(searched_tuple)) != 5:
                 st.warning("⚠️ Please provide 5 distinct main numbers.")
             else:
-                # Search across full clean_df
                 full_clean_copy = clean_df.copy()
                 full_clean_copy["search_tuple"] = full_clean_copy[main_cols].apply(
                     lambda row: tuple(sorted([int(x) for x in row if pd.notna(x)])), axis=1
@@ -337,19 +367,15 @@ with tab_add:
                     for i, val in enumerate(e_list, start=1):
                         new_row[f"euro_{i}"] = val
                         
-                    # Update session state
                     st.session_state.clean_df = pd.concat([st.session_state.clean_df, pd.DataFrame([new_row])], ignore_index=True)
-                    
-                    # Save permanently to disk CSV
                     st.session_state.clean_df.to_csv(clean_draws_path, index=False)
                     
-                    # CLEAR CACHE AND RELOAD TO FORCE LATEST DATA RECOGNITION
                     st.cache_data.clear()
                     c_df, m_df, e_df = load_data()
                     st.session_state.clean_df = c_df
                     
                     st.success(f"✓ Successfully registered and saved future draw for **{new_draw_date.strftime('%B %d, %Y')}**!")
                     st.balloons()
-                    st.rerun() # Forces the app to instantly refresh and show the new draw!
+                    st.rerun()
             except Exception as e:
                     st.error(f"Failed to add draw: {e}")
