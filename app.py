@@ -337,8 +337,13 @@ with tab_add:
                     for i, val in enumerate(e_list, start=1):
                         new_row[f"euro_{i}"] = val
                         
+                    # Update session state
                     st.session_state.clean_df = pd.concat([st.session_state.clean_df, pd.DataFrame([new_row])], ignore_index=True)
-                    st.success(f"✓ Successfully registered future draw for **{new_draw_date.strftime('%B %d, %Y')}**!")
+                    
+                    # Save permanently to disk CSV
+                    st.session_state.clean_df.to_csv(clean_draws_path, index=False)
+                    
+                    st.success(f"✓ Successfully registered and saved future draw for **{new_draw_date.strftime('%B %d, %Y')}**!")
                     st.balloons()
             except Exception as e:
                     st.error(f"Failed to add draw: {e}")
