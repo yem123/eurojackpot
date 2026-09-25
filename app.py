@@ -124,14 +124,14 @@ with tab_inspect:
                         drawn_mains = [int(row_data[f"main_{i}"]) for i in range(1, 6) if f"main_{i}" in row_data]
                         drawn_euros = [int(row_data[f"euro_{i}"]) for i in range(1, 3) if f"euro_{i}" in row_data]
                         
-                        # 1. Update Gaps
+                        # 1. Update Gaps for both pools
                         latest_main.loc[latest_main["number"].isin(drawn_mains), "gap_since_last"] = 0
                         latest_main.loc[~latest_main["number"].isin(drawn_mains), "gap_since_last"] += 1
                         
                         latest_euro.loc[latest_euro["number"].isin(drawn_euros), "gap_since_last"] = 0
                         latest_euro.loc[~latest_euro["number"].isin(drawn_euros), "gap_since_last"] += 1
 
-                        # 2. Update Frequencies dynamically for numbers that just hit
+                        # 2. Update Frequencies dynamically for BOTH main and euro pools
                         for col in ["freq_short", "freq_medium", "freq_long", "freq_all"]:
                             if col in latest_main.columns:
                                 latest_main.loc[latest_main["number"].isin(drawn_mains), col] += 1
