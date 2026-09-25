@@ -106,15 +106,15 @@ with tab_inspect:
         st.markdown("---")
         if st.button("Generate Prediction Ticket for Next Draw"):
             try:
-                selected_draw_idx = int(row_data.get("draw_idx", main_df["draw_idx"].max()))
+                max_m_idx = main_df["draw_idx"].max()
+                selected_draw_idx = int(row_data.get("draw_idx", max_m_idx if pd.notna(max_m_idx) else 1))
                 
                 with st.spinner("Calculating features and training models..."):
                     if selected_draw_idx in main_df["draw_idx"].values:
                         latest_main = main_df[main_df["draw_idx"] == selected_draw_idx].copy()
                         latest_euro = euro_df[euro_df["draw_idx"] == selected_draw_idx].copy()
                     else:
-                        # Dynamic feature generation for newly added draws lacking pre-computed rows
-                        max_existing_idx = main_df["draw_idx"].max()
+                        max_existing_idx = int(max_m_idx) if pd.notna(max_m_idx) else 1
                         latest_main = main_df[main_df["draw_idx"] == max_existing_idx].copy()
                         latest_euro = euro_df[euro_df["draw_idx"] == max_existing_idx].copy()
                         
@@ -218,7 +218,7 @@ with tab_inspect:
                         c_df, m_df, e_df = load_data()
                         st.session_state.clean_df = c_df
                         
-                        st.success("✓ Draw deleted and changes saved permanently to disk!")
+                        st.success("✓ Delete successful and changes saved permanently to disk!")
                         st.rerun()
             elif admin_pwd_input:
                 st.error("❌ Incorrect password.")
@@ -375,7 +375,8 @@ with tab_add:
                 if len(m_list) != 5 or len(e_list) != 2:
                     st.error("❌ Please provide exactly 5 main numbers and 2 euro numbers.")
                 else:
-                    new_idx = int(st.session_state.clean_df["draw_idx"].max()) + 1 if "draw_idx" in st.session_state.clean_df.columns else len(st.session_state.clean_df) + 1
+                    clean_max = st.session_state.clean_df["draw_idx"].max()
+                    new_idx = int(clean_max) + 1 if pd.notna(clean_max) else len(st.session_state.clean_df) + 1
                     
                     # 1. Update clean_draws.csv
                     new_row = {"draw_idx": new_idx, "draw_date": new_draw_date}
@@ -387,36 +388,45 @@ with tab_add:
                     st.session_state.clean_df = pd.concat([st.session_state.clean_df, pd.DataFrame([new_row])], ignore_index=True)
                     st.session_state.clean_df.to_csv(clean_draws_path, index=False)
                     
-                    # 2. Automatically generate and append new feature rows for ML persistence
-                    max_existing_idx = main_df["draw_idx"].max()
+                    # 2. Automatically generate and append new feature rows safely (handling NaNs)
+                    main_df_clean = main_df.fillna(0)
+                    euro_df_clean = euro_df.fillna(0)
+                    
+                    max_main_val = main_df_clean["draw_idx"].max()
+                    max_existing_idx = int(max_main_val) if pd.notna(max_main_val) else 1
                     
                     # --- MAIN FEATURES PERSISTENCE (1 to 50) ---
-                    last_main_rows = main_df[main_df["draw_idx"] == max_existing_idx].copy()
+                    last_main_rows = main_df_clean[main_df_clean["draw_idx"] == max_existing_idx].copy()
                     new_main_rows = []
                     for num in range(1, 51):
                         prev_row = last_main_rows[last_main_rows["number"] == num]
                         if not prev_row.empty:
                             r = prev_row.iloc[0].to_dict()
+                            for k, v in r.items():
+                                if pd.isna(v):
+                                    r[k] = 0
+                                elif isinstance(v, float) and v.is_integer() and k not in ["recency_weighted", "pair_score", "triplet_score", "ctx_avg_sum", "ctx_avg_odd_count", "ctx_avg_low_count"]:
+                                    r[k] = int(v)
                         else:
                             r = {
-                                "number": num, "freq_short": 0, "freq_medium": 0, "freq_long": 0, "freq_all": 0, 
-                                "freq_trend": 0, "gap_since_last": 0, "recency_weighted": 0, "pair_score": 0, 
-                                "triplet_score": 0, "adjacent_flag": 0, "is_odd": num % 2, "is_low": 1 if num <= 25 else 0,
-                                "ctx_avg_sum": sum(m_list), "ctx_avg_odd_count": sum(1 for x in m_list if x % 2 != 0), 
-                                "ctx_avg_low_count": sum(1 for x in m_list if x <= 25)
+                                "number": int(num), "freq_short": 0, "freq_medium": 0, "freq_long": 0, "freq_all": 0, 
+                                "freq_trend": 0, "gap_since_last": 0, "recency_weighted": 0.0, "pair_score": 0.0, 
+                                "triplet_score": 0.0, "adjacent_flag": 0, "is_odd": int(num % 2), "is_low": 1 if num <= 25 else 0,
+                                "ctx_avg_sum": float(sum(m_list)), "ctx_avg_odd_count": float(sum(1 for x in m_list if x % 2 != 0)), 
+                                "ctx_avg_low_count": float(sum(1 for x in m_list if x <= 25))
                             }
                         
-                        r["draw_idx"] = new_idx
-                        r["draw_date"] = new_draw_date
+                        r["draw_idx"] = int(new_idx)
+                        r["draw_date"] = str(new_draw_date)
                         
                         if num in m_list:
                             r["gap_since_last"] = 0
                             r["target"] = 1
                             for f_col in ["freq_short", "freq_medium", "freq_long", "freq_all"]:
                                 if f_col in r:
-                                    r[f_col] += 1
+                                    r[f_col] = int(r[f_col]) + 1
                         else:
-                            r["gap_since_last"] += 1
+                            r["gap_since_last"] = int(r.get("gap_since_last", 0)) + 1
                             r["target"] = 0
                             
                         new_main_rows.append(r)
@@ -425,30 +435,38 @@ with tab_add:
                     updated_main_df.to_csv(main_path, index=False)
                     
                     # --- EURO FEATURES PERSISTENCE (1 to 12) ---
-                    last_euro_rows = euro_df[euro_df["draw_idx"] == max_existing_idx].copy()
+                    max_euro_val = euro_df_clean["draw_idx"].max()
+                    max_euro_existing_idx = int(max_euro_val) if pd.notna(max_euro_val) else 1
+                    
+                    last_euro_rows = euro_df_clean[euro_df_clean["draw_idx"] == max_euro_existing_idx].copy()
                     new_euro_rows = []
                     for num in range(1, 13):
                         prev_row = last_euro_rows[last_euro_rows["number"] == num]
                         if not prev_row.empty:
                             r = prev_row.iloc[0].to_dict()
+                            for k, v in r.items():
+                                if pd.isna(v):
+                                    r[k] = 0
+                                elif isinstance(v, float) and v.is_integer() and k not in ["recency_weighted", "pair_score"]:
+                                    r[k] = int(v)
                         else:
                             r = {
-                                "number": num, "freq_short": 0, "freq_medium": 0, "freq_long": 0, "freq_all": 0, 
-                                "freq_trend": 0, "gap_since_last": 0, "recency_weighted": 0, "pair_score": 0, 
-                                "adjacent_flag": 0, "is_odd": num % 2, "is_low": 1 if num <= 6 else 0
+                                "number": int(num), "freq_short": 0, "freq_medium": 0, "freq_long": 0, "freq_all": 0, 
+                                "freq_trend": 0, "gap_since_last": 0, "recency_weighted": 0.0, "pair_score": 0.0, 
+                                "adjacent_flag": 0, "is_odd": int(num % 2), "is_low": 1 if num <= 6 else 0
                             }
                         
-                        r["draw_idx"] = new_idx
-                        r["draw_date"] = new_draw_date
+                        r["draw_idx"] = int(new_idx)
+                        r["draw_date"] = str(new_draw_date)
                         
                         if num in e_list:
                             r["gap_since_last"] = 0
                             r["target"] = 1
                             for f_col in ["freq_short", "freq_medium", "freq_long", "freq_all"]:
                                 if f_col in r:
-                                    r[f_col] += 1
+                                    r[f_col] = int(r[f_col]) + 1
                         else:
-                            r["gap_since_last"] += 1
+                            r["gap_since_last"] = int(r.get("gap_since_last", 0)) + 1
                             r["target"] = 0
                             
                         new_euro_rows.append(r)
