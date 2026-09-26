@@ -145,24 +145,48 @@ with tab_inspect:
                                 latest_euro.loc[latest_euro["number"].isin(drawn_euros), col] += 1
 
                     main_model = LogisticRegression(max_iter=2000)
-                    main_model.fit(main_df[FROZEN_MAIN_FEATURES], main_df["target"])
-                    
-                    main_probs = main_model.predict_proba(latest_main[FROZEN_MAIN_FEATURES])[:, 1]
+                    main_model.fit(
+                        main_df[FROZEN_MAIN_FEATURES], main_df["target"]
+                    )
+
+                    main_probs = main_model.predict_proba(
+                        latest_main[FROZEN_MAIN_FEATURES]
+                    )[:, 1]
                     latest_main["predicted_probability"] = main_probs
-                    top_main = sorted(latest_main.sort_values(by="predicted_probability", ascending=False).head(5)["number"].tolist())
-                    
-                    euro_model = RandomForestClassifier(n_estimators=300, max_depth=4, min_samples_leaf=50, random_state=42, n_jobs=-1)
-                    euro_model.fit(euro_df[FROZEN_EURO_FEATURES], euro_df["target"])
-                    
-                    euro_probs = euro_model.predict_proba(latest_euro[FROZEN_EURO_FEATURES])[:, 1]
+
+                    # ENSURE UNIQUE NUMBERS: Drop any duplicate row entries for the same number first
+                    unique_latest_main = latest_main.drop_duplicates(
+                        subset=["number"]
+                    ).sort_values(by="predicted_probability", ascending=False)
+                    top_main = sorted(
+                        unique_latest_main.head(5)["number"].tolist()
+                    )
+
+                    euro_model = RandomForestClassifier(
+                        n_estimators=300,
+                        max_depth=4,
+                        min_samples_leaf=50,
+                        random_state=42,
+                        n_jobs=-1,
+                    )
+                    euro_model.fit(
+                        euro_df[FROZEN_EURO_FEATURES], euro_df["target"]
+                    )
+
+                    euro_probs = euro_model.predict_proba(
+                        latest_euro[FROZEN_EURO_FEATURES]
+                    )[:, 1]
                     latest_euro["predicted_probability"] = euro_probs
-                    
-                    # Sort deterministically by probability first, then by gap_since_last for data-driven tie-breaking
+
+                    # ENSURE UNIQUE NUMBERS for Euro pool as well
+                    unique_latest_euro = latest_euro.drop_duplicates(
+                        subset=["number"]
+                    ).sort_values(
+                        by=["predicted_probability", "gap_since_last"],
+                        ascending=[False, False],
+                    )
                     top_euro = sorted(
-                        latest_euro.sort_values(
-                            by=["predicted_probability", "gap_since_last"], 
-                            ascending=[False, False]
-                        ).head(2)["number"].tolist()
+                        unique_latest_euro.head(2)["number"].tolist()
                     )
                     
                 st.markdown(f"### 🎯 RECOMMENDED PREDICTION TICKET")
