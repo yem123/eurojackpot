@@ -106,8 +106,13 @@ with tab_inspect:
         st.markdown("---")
         if st.button("Generate Prediction Ticket for Next Draw"):
             try:
+                raw_draw_idx = row_data.get("draw_idx")
                 max_m_idx = main_df["draw_idx"].max()
-                selected_draw_idx = int(row_data.get("draw_idx", max_m_idx if pd.notna(max_m_idx) else 1))
+                
+                if pd.isna(raw_draw_idx):
+                    selected_draw_idx = int(max_m_idx) if pd.notna(max_m_idx) else 1
+                else:
+                    selected_draw_idx = int(raw_draw_idx)
                 
                 with st.spinner("Calculating features and training models..."):
                     if selected_draw_idx in main_df["draw_idx"].values:
@@ -121,8 +126,8 @@ with tab_inspect:
                         latest_main["draw_idx"] = selected_draw_idx
                         latest_euro["draw_idx"] = selected_draw_idx
                         
-                        drawn_mains = [int(row_data[f"main_{i}"]) for i in range(1, 6) if f"main_{i}" in row_data]
-                        drawn_euros = [int(row_data[f"euro_{i}"]) for i in range(1, 3) if f"euro_{i}" in row_data]
+                        drawn_mains = [int(row_data[f"main_{i}"]) for i in range(1, 6) if f"main_{i}" in row_data and pd.notna(row_data[f"main_{i}"])]
+                        drawn_euros = [int(row_data[f"euro_{i}"]) for i in range(1, 3) if f"euro_{i}" in row_data and pd.notna(row_data[f"euro_{i}"])]
                         
                         # Update Gaps
                         latest_main.loc[latest_main["number"].isin(drawn_mains), "gap_since_last"] = 0
